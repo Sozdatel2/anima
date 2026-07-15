@@ -27,7 +27,7 @@ async def update_member_count():
         ),
         lambda: nextcord.Activity(
             type=nextcord.ActivityType.listening, 
-            name=f"{sum(guild.member_count for guild in bot.guilds)} прекрасных голоса(-ов)"
+            name=f"{sum(guild.member_count for guild in bot.guilds) - 5} прекрасных голоса(-ов)"
         )
     ])
     
