@@ -303,6 +303,46 @@ class Partnerships(commands.Cog):
         
         await ctx.send(embed=embed)
     
+    @commands.command(
+        name="pm_reset",
+        aliases=["resetpartners", "pmclear"],
+        description="Полный сброс всей статистики партнёрств",
+        brief="Сброс партнёрств"
+    )
+    @commands.has_permissions(administrator=True)
+    async def pm_reset(self, ctx):
+        """／ Сброс статистики партнёрств．"""
+        
+        await ctx.send(
+            "／ Подтверждение．\n\n"
+            "Ты уверен, что хочешь **полностью сбросить** всю статистику партнёрств?\n"
+            "Это действие **необратимо**.\n\n"
+            "Для подтверждения введи `!yes` в течение **30 секунд**."
+        )
+        
+        def check(m):
+            return m.author == ctx.author and m.content.lower() == "!yes" and m.channel == ctx.channel
+        
+        try:
+            await ctx.bot.wait_for("message", check=check, timeout=30.0)
+        except TimeoutError:
+            await ctx.send("／ Отменено．\n\nВремя вышло, сброс отменён.")
+            return
+        
+        self.data = {
+            "partnerships": {},
+            "servers": {},
+            "meta": {"reset_at": datetime.now(timezone.utc).isoformat()}
+        }
+        self.save_data()
+        
+        self.server_cache = {}
+        
+        await ctx.send(
+            "／ Готово．\n\n"
+            "Статистика партнёрств **полностью сброшена**."
+        )
+    
     # ==========================================
     # 🔹 СЛЕШ-КОМАНДЫ (/)
     # ==========================================
@@ -317,7 +357,6 @@ class Partnerships(commands.Cog):
             required=False
         )
     ):
-        """Слеш-команда: статистика ПМа"""
         if member is None:
             member = interaction.user
         
@@ -375,7 +414,6 @@ class Partnerships(commands.Cog):
     @nextcord.slash_command(name="pm_top", description="Показывает топ ПМов по количеству партнёрств")
     @commands.has_permissions(administrator=True)
     async def slash_pm_top(self, interaction: nextcord.Interaction):
-        """Слеш-команда: топ ПМов"""
         stats = self.get_all_stats("all")
         
         if not stats:
@@ -417,7 +455,6 @@ class Partnerships(commands.Cog):
     @nextcord.slash_command(name="pm_servers", description="Показывает топ серверов по количеству партнёрств")
     @commands.has_permissions(administrator=True)
     async def slash_pm_servers(self, interaction: nextcord.Interaction):
-        """Слеш-команда: топ серверов"""
         if not self.data["servers"]:
             await interaction.response.send_message("／ Статистика．\n\nНет данных о серверах")
             return
