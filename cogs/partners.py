@@ -145,6 +145,10 @@ class Partnerships(commands.Cog):
         
         self.save_data()
     
+    # ==========================================
+    # 🔹 ПРЕФИКСНЫЕ КОМАНДЫ (через .)
+    # ==========================================
+    
     @commands.command(
         name="pm_info",
         aliases=["pminfo", "pmstat", "pm"],
@@ -292,13 +296,165 @@ class Partnerships(commands.Cog):
                     server_list.insert(0, f"◞ **{name}** — {count} партнёрств")
                     break
         
-        # Если серверов больше 15, добавляем остальные
         if len(sorted_servers) > 15:
             server_list.append(f"\n*и ещё {len(sorted_servers) - 15} серверов*")
         
         embed.description += f"\n\n" + "\n".join(server_list)
         
         await ctx.send(embed=embed)
+    
+    # ==========================================
+    # 🔹 СЛЕШ-КОМАНДЫ (/)
+    # ==========================================
+    
+    @nextcord.slash_command(name="pm_info", description="Показывает статистику ПМа")
+    @commands.has_permissions(administrator=True)
+    async def slash_pm_info(
+        self,
+        interaction: nextcord.Interaction,
+        member: nextcord.Member = nextcord.SlashOption(
+            description="Пользователь (по умолчанию — вы)",
+            required=False
+        )
+    ):
+        """Слеш-команда: статистика ПМа"""
+        if member is None:
+            member = interaction.user
+        
+        if not any(role.id == self.ROLE_ID for role in member.roles):
+            await interaction.response.send_message(f"❌ {member.mention} не является ПМом!", ephemeral=True)
+            return
+        
+        stats = self.get_user_stats(member.id, "all")
+        
+        embed = nextcord.Embed(
+            title="／ Статистика ПМа．",
+            description=(
+                f"**{member.display_name}**\n"
+                f"Всего партнёрств： **{stats['count']}**\n"
+                f"Уникальных серверов： **{len(set(stats['server_names']))}**"
+            ),
+            color=member.color
+        )
+        
+        if stats["server_names"]:
+            server_counts = {}
+            for server_name in stats["server_names"]:
+                server_counts[server_name] = server_counts.get(server_name, 0) + 1
+            
+            top_servers = sorted(server_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+            embed.add_field(
+                name="／ Чаще всего писал．",
+                value="\n".join(f"◞ **{name}** — {count}" for name, count in top_servers),
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="／ Чаще всего писал．",
+                value="Нет данных",
+                inline=False
+            )
+        
+        if stats["server_names"]:
+            recent = list(zip(stats["server_names"], stats["timestamps"]))[-5:][::-1]
+            embed.add_field(
+                name="／ Последние．",
+                value="\n".join(f"◞ **{name}** — <t:{int(datetime.fromisoformat(ts).timestamp())}:R>" 
+                               for name, ts in recent),
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="／ Последние．",
+                value="Нет данных",
+                inline=False
+            )
+        
+        await interaction.response.send_message(embed=embed)
+    
+    @nextcord.slash_command(name="pm_top", description="Показывает топ ПМов по количеству партнёрств")
+    @commands.has_permissions(administrator=True)
+    async def slash_pm_top(self, interaction: nextcord.Interaction):
+        """Слеш-команда: топ ПМов"""
+        stats = self.get_all_stats("all")
+        
+        if not stats:
+            await interaction.response.send_message("／ Статистика．\n\nНет данных о партнёрствах")
+            return
+        
+        embed = nextcord.Embed(
+            title="／ Топ ПМов．",
+            description=f"Всего ПМов с активностью： **{len(stats)}**",
+            color=0x2B2D31
+        )
+        
+        guild = self.bot.get_guild(self.GUILD_ID)
+        if guild:
+            sorted_users = sorted(stats.items(), key=lambda x: x[1]["count"], reverse=True)
+            
+            top_text = []
+            for i, (user_id, user_stats) in enumerate(sorted_users[:10], 1):
+                member = guild.get_member(int(user_id))
+                if member:
+                    unique_servers = len(set(user_stats["server_names"]))
+                    medal = ["**1．**", "**2．**", "**3．**"][i-1] if i <= 3 else f"**{i}．**"
+                    top_text.append(
+                        f"{medal} {member.mention}\n"
+                        f"   ◞ Партнёрств： {user_stats['count']} | Серверов： {unique_servers}"
+                    )
+            
+            if top_text:
+                embed.description += f"\n\n" + "\n".join(top_text)
+            else:
+                embed.add_field(
+                    name="Нет данных",
+                    value="Не удалось получить информацию о пользователях",
+                    inline=False
+                )
+        
+        await interaction.response.send_message(embed=embed)
+    
+    @nextcord.slash_command(name="pm_servers", description="Показывает топ серверов по количеству партнёрств")
+    @commands.has_permissions(administrator=True)
+    async def slash_pm_servers(self, interaction: nextcord.Interaction):
+        """Слеш-команда: топ серверов"""
+        if not self.data["servers"]:
+            await interaction.response.send_message("／ Статистика．\n\nНет данных о серверах")
+            return
+        
+        sorted_servers = sorted(self.data["servers"].items(), key=lambda x: x[1], reverse=True)
+        
+        embed = nextcord.Embed(
+            title="／ Топ серверов．",
+            description=f"Всего серверов： **{len(sorted_servers)}**",
+            color=0x2B2D31
+        )
+        
+        server_list = []
+        vip_added = False
+        
+        for invite_code, count in sorted_servers[:15]:
+            name = self.get_server_name(invite_code)
+            
+            if name == self.VIP_SERVER_NAME and not vip_added:
+                server_list.insert(0, f"◞ **{name}** — {count} партнёрств")
+                vip_added = True
+            else:
+                server_list.append(f"◞ **{name}** — {count}")
+        
+        if not vip_added:
+            for invite_code, count in self.data["servers"].items():
+                name = self.get_server_name(invite_code)
+                if name == self.VIP_SERVER_NAME:
+                    server_list.insert(0, f"◞ **{name}** — {count} партнёрств")
+                    break
+        
+        if len(sorted_servers) > 15:
+            server_list.append(f"\n*и ещё {len(sorted_servers) - 15} серверов*")
+        
+        embed.description += f"\n\n" + "\n".join(server_list)
+        
+        await interaction.response.send_message(embed=embed)
 
 def setup(bot):
     bot.add_cog(Partnerships(bot))
