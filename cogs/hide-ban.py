@@ -26,16 +26,64 @@ class HideBanCommand(commands.Cog):
         remove_role_ids = [846335308497027122, 1019964836639166525]
         reports_channel_id = 846329342983143434
 
+        # ==========================================
+        # 🔹 ПРОВЕРКИ
+        # ==========================================
+
+        # Нельзя выдать теневой бан самому себе
+        author = context.author if hasattr(context, 'author') else context.user
+        if member.id == author.id:
+            error_embed = nextcord.Embed(
+                title="／ Ошибка．",
+                description="❌ Нельзя выдать теневой бан самому себе！",
+                color=0xE10000
+            )
+            if isinstance(context, nextcord.Interaction):
+                await context.response.send_message(embed=error_embed, ephemeral=True)
+            else:
+                await context.send(embed=error_embed)
+            return
+
+        # Нельзя выдать теневой бан боту
+        if member.bot:
+            error_embed = nextcord.Embed(
+                title="／ Ошибка．",
+                description="❌ Нельзя выдать теневой бан боту！",
+                color=0xE10000
+            )
+            if isinstance(context, nextcord.Interaction):
+                await context.response.send_message(embed=error_embed, ephemeral=True)
+            else:
+                await context.send(embed=error_embed)
+            return
+
+        # Нельзя выдать теневой бан администратору
+        if member.guild_permissions.administrator:
+            error_embed = nextcord.Embed(
+                title="／ Ошибка．",
+                description="❌ Нельзя выдать теневой бан администратору！",
+                color=0xE10000
+            )
+            if isinstance(context, nextcord.Interaction):
+                await context.response.send_message(embed=error_embed, ephemeral=True)
+            else:
+                await context.send(embed=error_embed)
+            return
+
+        # ==========================================
+        # 🔹 ВЫДАЧА ТЕНЕВОГО БАНА
+        # ==========================================
+
         try:
             add_role = member.guild.get_role(add_role_id)
             if add_role is None:
                 raise ValueError(f"Role with ID {add_role_id} not found")
-            
+
             await member.add_roles(add_role)
             roles_to_remove = [role for role in member.roles if role.id in remove_role_ids]
             if roles_to_remove:
                 await member.remove_roles(*roles_to_remove)
-            
+
             dm_embed = nextcord.Embed(
                 title="／ Блокировка доступа．",
                 description=f"{member.mention}, вам была выдана блокировка доступа к серверу **anime nom**．"
@@ -50,21 +98,21 @@ class HideBanCommand(commands.Cog):
                 value=f"**{reason}**",
                 inline=False
             )
-            
+
             dm_sent = False
             try:
                 await member.send(embed=dm_embed)
                 dm_sent = True
             except:
                 dm_sent = False
-            
+
             # Ответ модератору
             response_embed = nextcord.Embed(
                 title="／ Блокировка выдана．"
             )
             response_embed.add_field(
                 name="Модератор：",
-                value=f"**{context.author.display_name}**",
+                value=f"**{author.display_name}**",
                 inline=True
             )
             response_embed.add_field(
@@ -83,14 +131,15 @@ class HideBanCommand(commands.Cog):
                 inline=False
             )
             response_embed.set_footer(text="Пожалуйста, не забудьте внести нарушителя в канал нарушений．")
-            
+
             if isinstance(context, nextcord.Interaction):
                 await context.response.send_message(embed=response_embed)
             else:
                 await context.send(embed=response_embed)
-        
+
         except Exception as e:
             error_embed = nextcord.Embed(
+                title="／ Ошибка．",
                 description=f"❌ Произошла ошибка： {str(e)}",
                 color=0xE10000
             )

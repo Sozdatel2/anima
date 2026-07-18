@@ -1,13 +1,13 @@
 import nextcord
 from nextcord.ext import commands
-from nextcord import Interaction
+from nextcord import Interaction, Embed
 from typing import Union, Dict, List
 
 class HelpCommand(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.excluded_commands = ['load', 'unload', 'reload', 'help']
-        
+
         self.category_map = {
             'Moderation': {'emoji': '🛡️', 'name': 'Модерация'},
             'Verify': {'emoji': '✅', 'name': 'Верификация'},
@@ -21,25 +21,101 @@ class HelpCommand(commands.Cog):
             'Default': {'emoji': '📂', 'name': 'Прочее'}
         }
 
-    @nextcord.slash_command(name="help", description="Показать список доступных команд")
-    async def help_slash(self, interaction: Interaction):
-        await self._help_command(interaction)
-
     @commands.command(name="help", aliases=["h", "помощь"], description="Показать список доступных команд")
-    async def help_prefix(self, ctx):
-        await self._help_command(ctx)
+    async def help_prefix(self, ctx, command_name: str = None):
+        if command_name:
+            await self._help_command_detail(ctx, command_name)
+        else:
+            await self._help_command(ctx)
+
+    @nextcord.slash_command(name="help", description="Показать список доступных команд")
+    async def help_slash(self, interaction: Interaction, command: str = None):
+        if command:
+            await self._help_command_detail(interaction, command)
+        else:
+            await self._help_command(interaction)
+
+    async def _help_command_detail(self, context, command_name: str):
+        """Показывает подробную информацию о конкретной команде"""
+        cmd = self.bot.get_command(command_name)
+        if not cmd:
+            embed = Embed(
+                title="／ Ошибка．",
+                description=f"❌ Команда `{command_name}` не найдена"
+            )
+            if isinstance(context, Interaction):
+                await context.response.send_message(embed=embed, ephemeral=True)
+            else:
+                await context.send(embed=embed)
+            return
+
+        aliases = f"**{', '.join(cmd.aliases)}**" if cmd.aliases else "Нет"
+        description = cmd.help or cmd.description or "Описание отсутствует"
+        usage = f"{self.bot.command_prefix}{cmd.name}"
+
+        params = []
+        for param in cmd.params.values():
+            if param.name not in ['self', 'ctx', 'interaction']:
+                if param.default == param.empty:
+                    params.append(f"[{param.name}]")
+                else:
+                    params.append(f"({param.name})")
+
+        if params:
+            usage += " " + " ".join(params)
+
+        checks = []
+        for check in cmd.checks:
+            check_str = str(check).replace('<function ', '').replace(' at 0x...>', '')
+            if 'has_permissions' in check_str:
+                checks.append("Требуются права модератора")
+            elif 'is_owner' in check_str:
+                checks.append("Только для владельца бота")
+            elif 'has_role' in check_str:
+                checks.append("Требуется определённая роль")
+
+        embed = Embed(
+            title=f"／ Помощь по команде．",
+            description=f"**{cmd.name}**"
+        )
+        embed.add_field(name="Описание", value=description, inline=False)
+        embed.add_field(name="Использование", value=f"`{usage}`", inline=False)
+        embed.add_field(name="Алиасы", value=aliases, inline=True)
+        if checks:
+            embed.add_field(name="Права", value="\n".join(checks), inline=True)
+
+        slash_cmd = None
+        for cmd_name, slash in self.bot.slash_commands.items():
+            if cmd_name == command_name:
+                slash_cmd = slash
+                break
+
+        if slash_cmd:
+            slash_usage = f"/{slash_cmd.name}"
+            if hasattr(slash_cmd, 'options') and slash_cmd.options:
+                for opt in slash_cmd.options:
+                    if opt.required:
+                        slash_usage += f" [{opt.name}]"
+                    else:
+                        slash_usage += f" ({opt.name})"
+            embed.add_field(name="Слеш-команда", value=f"`{slash_usage}`", inline=False)
+
+        if isinstance(context, Interaction):
+            await context.response.send_message(embed=embed)
+        else:
+            await context.send(embed=embed)
 
     async def _help_command(self, context: Union[Interaction, commands.Context]):
-        embed = nextcord.Embed(
+        embed = Embed(
             title="／ Список команд бота．",
             description="Команды разделены по категориям．Отображаются только доступные вам команды．"
         )
 
         user = context.user if isinstance(context, Interaction) else context.author
         permissions = user.guild_permissions if hasattr(user, 'guild_permissions') else None
-        
+
         categorized_commands = self._get_categorized_commands(user, permissions)
-        
+
         for category, commands_list in categorized_commands.items():
             if commands_list:
                 category_info = self.category_map.get(category, {'emoji': '📂', 'name': 'Прочее'})
@@ -57,7 +133,7 @@ class HelpCommand(commands.Cog):
             )
 
         embed.set_footer(
-            text=f"Используйте {self.bot.command_prefix}help [команда] или /help для подробностей"
+            text=f"Используйте {self.bot.command_prefix}help [команда] или /help [команда] для подробностей"
         )
 
         if isinstance(context, Interaction):
@@ -68,7 +144,7 @@ class HelpCommand(commands.Cog):
     def _get_categorized_commands(self, user, permissions) -> Dict[str, List[str]]:
         categorized = {category: [] for category in self.category_map.keys()}
         categorized['Default'] = []
-        
+
         for cmd in self.bot.commands:
             if self._should_exclude_command(cmd):
                 continue
@@ -77,7 +153,7 @@ class HelpCommand(commands.Cog):
             category = self._get_command_category(cmd)
             command_text = self._format_prefix_command(cmd)
             categorized[category].append(command_text)
-        
+
         try:
             for cmd in self._get_slash_commands():
                 if cmd.name in self.excluded_commands:
@@ -89,7 +165,7 @@ class HelpCommand(commands.Cog):
                 categorized[category].append(command_text)
         except Exception as e:
             print(f"Ошибка при получении slash-команд: {e}")
-        
+
         return categorized
 
     def _should_exclude_command(self, cmd) -> bool:
