@@ -26,11 +26,6 @@ class HideBanCommand(commands.Cog):
         remove_role_ids = [846335308497027122, 1019964836639166525]
         reports_channel_id = 846329342983143434
 
-        # ==========================================
-        # 🔹 ПРОВЕРКИ
-        # ==========================================
-
-        # Нельзя выдать теневой бан самому себе
         author = context.author if hasattr(context, 'author') else context.user
         if member.id == author.id:
             error_embed = nextcord.Embed(
@@ -44,7 +39,6 @@ class HideBanCommand(commands.Cog):
                 await context.send(embed=error_embed)
             return
 
-        # Нельзя выдать теневой бан боту
         if member.bot:
             error_embed = nextcord.Embed(
                 title="／ Ошибка．",
@@ -57,7 +51,6 @@ class HideBanCommand(commands.Cog):
                 await context.send(embed=error_embed)
             return
 
-        # Нельзя выдать теневой бан администратору
         if member.guild_permissions.administrator:
             error_embed = nextcord.Embed(
                 title="／ Ошибка．",
@@ -69,10 +62,6 @@ class HideBanCommand(commands.Cog):
             else:
                 await context.send(embed=error_embed)
             return
-
-        # ==========================================
-        # 🔹 ВЫДАЧА ТЕНЕВОГО БАНА
-        # ==========================================
 
         try:
             add_role = member.guild.get_role(add_role_id)
@@ -106,7 +95,6 @@ class HideBanCommand(commands.Cog):
             except:
                 dm_sent = False
 
-            # Ответ модератору
             response_embed = nextcord.Embed(
                 title="／ Блокировка выдана．"
             )
