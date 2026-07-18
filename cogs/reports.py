@@ -42,7 +42,7 @@ class Reports(commands.Cog):
             self.cog = cog
 
         @ui.button(label="Принять", style=ButtonStyle.success, emoji="✅")
-        async def accept_button(self, button: Interaction, _):
+        async def accept_button(self, button, interaction):
             if not any(role.id in self.cog.MOD_ROLES_ALLOWED for role in button.user.roles):
                 await button.response.send_message("❌ У вас нет прав!", ephemeral=True)
                 return
@@ -80,7 +80,7 @@ class Reports(commands.Cog):
             await button.response.send_message("✅ Репорт принят!", ephemeral=True)
 
         @ui.button(label="Отклонить", style=ButtonStyle.danger, emoji="❌")
-        async def reject_button(self, button: Interaction, _):
+        async def reject_button(self, button, interaction):
             if not any(role.id in self.cog.MOD_ROLES_ALLOWED for role in button.user.roles):
                 await button.response.send_message("❌ У вас нет прав!", ephemeral=True)
                 return

@@ -159,7 +159,7 @@ class Nokta(commands.Cog):
             self.cog = cog
 
         @ui.button(label="Продлить нокту", style=ButtonStyle.primary, emoji="📌")
-        async def extend_button(self, button: Interaction, _):
+        async def extend_button(self, button, interaction):
             has_role = any(role.id in self.cog.MOD_ROLES for role in button.user.roles)
             if not has_role:
                 await button.response.send_message("❌ У вас нет прав для продления нокты!", ephemeral=True)
