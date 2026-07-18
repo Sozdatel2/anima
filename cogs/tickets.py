@@ -146,7 +146,7 @@ class Tickets(commands.Cog):
             self.cog = cog
 
         @ui.button(label="Взять в работу", style=ButtonStyle.primary, emoji="📌")
-        async def take_button(self, interaction: Interaction, _):
+        async def take_button(self, interaction, _):
             if not any(role.id in self.cog.MOD_ROLES_ALLOWED for role in interaction.user.roles):
                 await interaction.response.send_message("❌ У вас нет прав!", ephemeral=True)
                 return
@@ -179,7 +179,7 @@ class Tickets(commands.Cog):
             await interaction.response.send_message("📌 Тикет взят в работу!", ephemeral=True)
 
         @ui.button(label="Закрыть", style=ButtonStyle.danger, emoji="🔒")
-        async def close_button(self, interaction: Interaction, _):
+        async def close_button(self, interaction, _):
             if not any(role.id in self.cog.MOD_ROLES_ALLOWED for role in interaction.user.roles):
                 await interaction.response.send_message("❌ У вас нет прав!", ephemeral=True)
                 return
@@ -203,7 +203,7 @@ class Tickets(commands.Cog):
             self.cog = cog
 
         @ui.button(label="Создать тикет", style=ButtonStyle.success, emoji="🎫")
-        async def create_ticket(self, interaction: Interaction, _):
+        async def create_ticket(self, interaction, _):
             modal = self.cog.TicketModal(self.cog)
             await interaction.response.send_modal(modal)
 
