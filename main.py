@@ -21,7 +21,6 @@ bot = commands.Bot(command_prefix=prefix, owner_id=OWNER_ID, intents=nextcord.In
 bot.remove_command("help")
 
 async def send_error_to_owner(error: Exception, ctx=None, interaction=None):
-    """Отправляет ошибку в ЛС владельцу"""
     try:
         user = await bot.fetch_user(OWNER_ID)
         if not user:
@@ -44,10 +43,11 @@ async def send_error_to_owner(error: Exception, ctx=None, interaction=None):
 
 @bot.event
 async def on_command_error(ctx, error):
-    """Обработка ошибок для префиксных команд"""
-
     if isinstance(error, commands.CommandNotFound):
         command_name = ctx.message.content.split()[0].lstrip(ctx.prefix)
+        
+        if command_name == "help" or command_name.startswith("help"):
+            return
         
         all_commands = [cmd.name for cmd in bot.commands if not cmd.hidden]
         all_commands.extend([alias for cmd in bot.commands for alias in cmd.aliases])
@@ -83,7 +83,7 @@ async def on_command_error(ctx, error):
         )
         await ctx.send(embed=embed)
         return
-    
+
     if isinstance(error, commands.BadArgument):
         embed = nextcord.Embed(
             title="／ Ошибка．",
@@ -121,8 +121,6 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_application_command_error(interaction: nextcord.Interaction, error: Exception):
-    """Обработка ошибок для слеш-команд"""
-
     if isinstance(error, commands.MissingPermissions):
         embed = nextcord.Embed(
             title="／ Ошибка．",
