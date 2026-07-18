@@ -1,12 +1,10 @@
 import nextcord
 import json
 import asyncio
-import random
-import string
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from nextcord.ext import commands
-from nextcord import Interaction, SlashOption, ui, Embed, Color, ButtonStyle
+from nextcord import Interaction, SlashOption, ui, Embed, ButtonStyle
 
 class Nokta(commands.Cog):
     def __init__(self, bot):
@@ -14,15 +12,15 @@ class Nokta(commands.Cog):
         self.DATA_PATH = Path(__file__).parent.parent / "data" / "nokta.json"
         self.LOG_CHANNEL_ID = 1234596840008323162
         self.MOD_ROLES = [
-            1505229944245059735,  # Хед модерации
-            994284414584504372,   # Куратор
-            957679828176367647,   # Администратор
-            846338416303538226    # Овнеры
+            1505229944245059735,
+            994284414584504372,
+            957679828176367647,
+            846338416303538226
         ]
         self.DATA_PATH.parent.mkdir(exist_ok=True)
         self.data = self.load_data()
         self.bot.loop.create_task(self.check_noktas())
-    
+
     def load_data(self):
         try:
             with open(self.DATA_PATH, "r", encoding="utf-8") as f:
@@ -75,17 +73,14 @@ class Nokta(commands.Cog):
         channel = self.bot.get_channel(self.LOG_CHANNEL_ID)
         if not channel:
             return
-        
         embed = Embed(
             title=f"／ {title}．",
             timestamp=datetime.now(timezone.utc),
             color=color
         )
-        
         if fields:
             for name, value, inline in fields:
                 embed.add_field(name=name, value=value, inline=inline)
-        
         await channel.send(embed=embed)
 
     class ExtendModal(ui.Modal):
@@ -180,7 +175,7 @@ class Nokta(commands.Cog):
             changed = False
             for user_id_str, user_data in list(self.data.items()):
                 user_id = int(user_id_str)
-                
+
                 new_warns = []
                 for w in user_data:
                     if w.get("permanent", False):
@@ -248,6 +243,10 @@ class Nokta(commands.Cog):
                 self.save_data()
 
             await asyncio.sleep(3600)
+
+    # ==========================================
+    # 🔹 ПРЕФИКСНЫЕ КОМАНДЫ
+    # ==========================================
 
     @commands.command(name="nokta", description="Выдать нокту (варн) пользователю")
     @commands.has_permissions(moderate_members=True)
@@ -373,6 +372,148 @@ class Nokta(commands.Cog):
                 color=0xFF0000
             )
             await ctx.send(embed=embed)
+
+    # ==========================================
+    # 🔹 СЛЕШ-КОМАНДЫ
+    # ==========================================
+
+    @nextcord.slash_command(name="nokta", description="Выдать нокту (варн) пользователю")
+    @commands.has_permissions(moderate_members=True)
+    async def nokta_slash(
+        self,
+        interaction: Interaction,
+        member: nextcord.Member = SlashOption(description="Участник для нокты", required=True),
+        reason: str = SlashOption(description="Причина нокты", required=False, default="Не указана")
+    ):
+        if member.id == interaction.user.id:
+            await interaction.response.send_message("❌ Нельзя выдать нокту самому себе!", ephemeral=True)
+            return
+
+        if member.guild_permissions.administrator:
+            await interaction.response.send_message("❌ Нельзя выдать нокту администратору!", ephemeral=True)
+            return
+
+        self.add_warn(member.id, interaction.user.id, reason, 30)
+        active = self.get_active_warns(member.id)
+        warn_count = len(active)
+
+        embed = Embed(
+            title="／ Выдача нокты．",
+            description=f"Пользователь **{member.name}** получил нокту",
+            color=0xFFA500,
+            timestamp=datetime.now(timezone.utc)
+        )
+        embed.add_field(name="Причина", value=f"**{reason}**", inline=False)
+        embed.add_field(name="Всего нокт", value=f"**{warn_count}**", inline=True)
+        embed.add_field(name="Модератор", value=interaction.user.mention, inline=True)
+
+        user_warns = self.data.get(str(member.id), [])
+        warn_index = len(user_warns) - 1
+
+        view = self.ExtendButton(member.id, warn_index, self)
+        await interaction.response.send_message(embed=embed, view=view)
+
+        await self.log_action(
+            title="Выдача нокты",
+            fields=[
+                ("Пользователь", member.mention, True),
+                ("Модератор", interaction.user.mention, True),
+                ("Причина", reason, False),
+                ("Всего нокт", str(warn_count), True)
+            ],
+            color=0xFFA500
+        )
+
+    @nextcord.slash_command(name="my_nokta", description="Посмотреть свои активные нокты")
+    async def my_nokta_slash(self, interaction: Interaction):
+        active = self.get_active_warns(interaction.user.id)
+
+        if not active:
+            embed = Embed(
+                title="／ Мои нокты．",
+                description="✅ У вас нет активных нокт",
+                color=0x00FF00
+            )
+            await interaction.response.send_message(embed=embed)
+            return
+
+        embed = Embed(
+            title="／ Мои нокты．",
+            description=f"У вас **{len(active)}** активных нокт",
+            color=0xFFA500
+        )
+        for i, w in enumerate(active[:5], 1):
+            mod = self.bot.get_user(w["moderator_id"])
+            mod_name = mod.name if mod else "Unknown"
+            expires = "🔒 Перманентная" if w.get("permanent") else f"⌛ Истекает： <t:{int(datetime.fromisoformat(w['expires_at']).timestamp())}:R>"
+            embed.add_field(
+                name=f"Нокта #{i}",
+                value=f"Причина： {w['reason']}\nМодератор： {mod_name}\nСтатус： {expires}",
+                inline=False
+            )
+
+        await interaction.response.send_message(embed=embed)
+
+    @nextcord.slash_command(name="nokta_list", description="Показать нокты пользователя (только для модерации)")
+    @commands.has_permissions(moderate_members=True)
+    async def nokta_list_slash(
+        self,
+        interaction: Interaction,
+        member: nextcord.Member = SlashOption(description="Пользователь для просмотра нокт", required=True)
+    ):
+        active = self.get_active_warns(member.id)
+
+        embed = Embed(
+            title=f"／ Нокты пользователя {member.name}．",
+            description=f"Всего активных нокт： **{len(active)}**",
+            color=0x2B2D31
+        )
+
+        if not active:
+            embed.description += "\n\n✅ У пользователя нет активных нокт"
+        else:
+            for i, w in enumerate(active[:10], 1):
+                mod = self.bot.get_user(w["moderator_id"])
+                mod_name = mod.name if mod else "Unknown"
+                expires = "🔒 Перманентная" if w.get("permanent") else f"⌛ Истекает： <t:{int(datetime.fromisoformat(w['expires_at']).timestamp())}:R>"
+                embed.add_field(
+                    name=f"Нокта #{i}",
+                    value=f"Причина： {w['reason']}\nМодератор： {mod_name}\nСтатус： {expires}",
+                    inline=False
+                )
+
+        await interaction.response.send_message(embed=embed)
+
+    @nextcord.slash_command(name="clear_nokta", description="Очистить все нокты пользователя (только для админов)")
+    @commands.has_permissions(administrator=True)
+    async def clear_nokta_slash(
+        self,
+        interaction: Interaction,
+        member: nextcord.Member = SlashOption(description="Пользователь для очистки нокт", required=True)
+    ):
+        if self.clear_warns(member.id):
+            embed = Embed(
+                title="／ Очистка нокт．",
+                description=f"✅ Все нокты пользователя **{member.name}** очищены",
+                color=0x00FF00
+            )
+            await interaction.response.send_message(embed=embed)
+
+            await self.log_action(
+                title="Очистка нокт",
+                fields=[
+                    ("Пользователь", member.mention, True),
+                    ("Модератор", interaction.user.mention, True)
+                ],
+                color=0x00FF00
+            )
+        else:
+            embed = Embed(
+                title="／ Очистка нокт．",
+                description=f"❌ У пользователя **{member.name}** нет нокт",
+                color=0xFF0000
+            )
+            await interaction.response.send_message(embed=embed)
 
 def setup(bot):
     bot.add_cog(Nokta(bot))
