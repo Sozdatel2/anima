@@ -16,13 +16,14 @@ class Moderation(commands.Cog):
         self.LOG_CHANNEL_ID = 1234596840008323162
         self.bot.loop.create_task(self.check_tempbans())
 
-    async def log_action(self, title: str, fields: list = None):
+    async def log_action(self, title: str, fields: list = None, color: int = 0x2B2D31):
         channel = self.bot.get_channel(self.LOG_CHANNEL_ID)
         if not channel:
             return
         embed = Embed(
             title=f"／ {title}．",
-            timestamp=datetime.datetime.now(datetime.timezone.utc)
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
+            color=color
         )
         if fields:
             for name, value, inline in fields:
@@ -37,6 +38,7 @@ class Moderation(commands.Cog):
 
             await member.ban(reason=f'{context.author.name if context else "Система"}: {reason}')
 
+            # Сохраняем в JSON для авторазбана
             tempban_path = Path(__file__).parent.parent / "data" / "tempbans.json"
             tempban_path.parent.mkdir(exist_ok=True)
 
@@ -57,6 +59,7 @@ class Moderation(commands.Cog):
             with open(tempban_path, "w", encoding="utf-8") as f:
                 json.dump(tempbans, f, indent=2, ensure_ascii=False)
 
+            # Логирование
             time_str = humanfriendly.format_timespan(time_seconds)
             await self.log_action(
                 title="Временный бан",
@@ -65,7 +68,8 @@ class Moderation(commands.Cog):
                     ("Модератор", context.author.mention if context else "Система", True),
                     ("Длительность", time_str, True),
                     ("Причина", reason, False)
-                ]
+                ],
+                color=0xFF0000
             )
 
             return True
@@ -73,6 +77,7 @@ class Moderation(commands.Cog):
             return False
 
     async def check_tempbans(self):
+        """Проверяет темпбаны раз в час и разбанивает"""
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
             now = datetime.datetime.now(datetime.timezone.utc).timestamp()
@@ -102,7 +107,8 @@ class Moderation(commands.Cog):
                             embed = Embed(
                                 title="／ Авторазбан．",
                                 description=f"Пользователь **{user.name}** автоматически разбанен",
-                                timestamp=datetime.datetime.now(datetime.timezone.utc)
+                                timestamp=datetime.datetime.now(datetime.timezone.utc),
+                                color=0x00FF00
                             )
                             await channel.send(embed=embed)
                 except:
@@ -112,6 +118,59 @@ class Moderation(commands.Cog):
                 json.dump(tempbans, f, indent=2, ensure_ascii=False)
 
             await asyncio.sleep(3600)
+
+    @commands.command(name="ban", description="Забанить пользователя")
+    @commands.has_permissions(ban_members=True)
+    async def ban_prefix(self, ctx, member: nextcord.Member, *, reason: str = "Не указана"):
+        await self._ban_command(ctx, member, reason)
+
+    @nextcord.slash_command(name="ban", description="Забанить пользователя")
+    @commands.has_permissions(ban_members=True)
+    async def ban_slash(
+        self,
+        interaction: Interaction,
+        member: nextcord.Member = SlashOption(description="Участник для бана", required=True),
+        reason: str = SlashOption(description="Причина бана", required=False, default="Не указана")
+    ):
+        await self._ban_command(interaction, member, reason)
+
+    async def _ban_command(self, context, member: nextcord.Member, reason: str):
+        """Основной метод для бана"""
+        try:
+            await member.ban(reason=f'{context.author.name if context else "Система"}: {reason}')
+
+            emb = Embed(
+                title="／ Участник забанен．",
+                description=f"Пользователь **{member.name}** был забанен на сервере"
+            )
+            emb.add_field(name="Забанен：", value=member.mention, inline=True)
+            emb.add_field(name="Модератор：", value=context.author.mention if context else "Система", inline=True)
+            emb.add_field(name="Причина：", value=f"**{reason}**", inline=False)
+
+            await self.log_action(
+                title="Бан",
+                fields=[
+                    ("Пользователь", member.mention, True),
+                    ("Модератор", context.author.mention if context else "Система", True),
+                    ("Причина", reason, False)
+                ],
+                color=0xFF0000
+            )
+
+            if isinstance(context, Interaction):
+                await context.response.send_message(embed=emb)
+            else:
+                await context.send(embed=emb)
+
+        except Exception as e:
+            error_emb = Embed(
+                description=f"❌ Ошибка при бане: {str(e)}",
+                color=0xE10000
+            )
+            if isinstance(context, Interaction):
+                await context.response.send_message(embed=error_emb, ephemeral=True)
+            else:
+                await context.send(embed=error_emb)
 
     @nextcord.slash_command(name="mute", description="Выдать мут пользователю (timeout)")
     @commands.has_permissions(moderate_members=True)
@@ -130,6 +189,7 @@ class Moderation(commands.Cog):
         await self._mute_command(ctx, member, time, reason)
 
     async def _mute_command(self, context, member: nextcord.Member, time: str, reason: str):
+        """Основной метод для выдачи мута"""
         try:
             time_seconds = humanfriendly.parse_timespan(time)
             timeout_end = nextcord.utils.utcnow() + datetime.timedelta(seconds=time_seconds)
@@ -140,7 +200,7 @@ class Moderation(commands.Cog):
                 reason=f'{context.author.name if context else "Система"} | {reason}'
             )
 
-            emb = nextcord.Embed(
+            emb = Embed(
                 title="／ Выдача мута．",
                 description="Пользователю был выдан мут на сервере．"
             )
@@ -156,7 +216,8 @@ class Moderation(commands.Cog):
                     ("Модератор", context.author.mention if context else "Система", True),
                     ("Длительность", humanfriendly.format_timespan(time_seconds), True),
                     ("Причина", reason, False)
-                ]
+                ],
+                color=0xFFA500
             )
 
             if isinstance(context, Interaction):
@@ -165,8 +226,9 @@ class Moderation(commands.Cog):
                 await context.send(embed=emb)
 
         except humanfriendly.InvalidTimespan:
-            error_emb = nextcord.Embed(
-                description="❌ Некорректный формат времени．Используйте： `10s`, `5m`, `1h`, `1d`"
+            error_emb = Embed(
+                description="❌ Некорректный формат времени．Используйте： `10s`, `5m`, `1h`, `1d`",
+                color=0xE10000
             )
             if isinstance(context, Interaction):
                 await context.response.send_message(embed=error_emb, ephemeral=True)
@@ -190,7 +252,7 @@ class Moderation(commands.Cog):
     async def _unmute_command(self, context, member: nextcord.Member):
         await member.edit(timeout=None)
 
-        emb = nextcord.Embed(
+        emb = Embed(
             title="／ Снятие мута．",
             description="С пользователя был снят мут．"
         )
@@ -202,7 +264,8 @@ class Moderation(commands.Cog):
             fields=[
                 ("Пользователь", member.mention, True),
                 ("Модератор", context.author.mention, True)
-            ]
+            ],
+            color=0x00FF00
         )
 
         if isinstance(context, Interaction):
@@ -229,7 +292,7 @@ class Moderation(commands.Cog):
         author = context.author
         await member.kick(reason=f'{author.name}: {reason}')
 
-        emb = nextcord.Embed(
+        emb = Embed(
             title="／ Участник кикнут．",
             description="Пользователь был успешно кикнут с сервера．"
         )
@@ -243,7 +306,8 @@ class Moderation(commands.Cog):
                 ("Пользователь", member.mention, True),
                 ("Модератор", author.mention, True),
                 ("Причина", reason, False)
-            ]
+            ],
+            color=0xFFA500
         )
 
         if isinstance(context, Interaction):
