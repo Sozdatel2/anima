@@ -6,6 +6,32 @@ class Verify(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    @commands.Cog.listener()
+    async def on_member_join(self, member: nextcord.Member):
+        """Приветствие нового участника в DM"""
+        try:
+            embed = nextcord.Embed(
+                title="／ Прибытие．",
+                description=(
+                    f"**{member.mention}**, добро пожаловать на **anime nom**!\n"
+                    "Мы рады приветствовать тебя в нашей уютной компании.\n\n"
+                    "Перед началом общения, нам необходимо подтвердить, что ты не робот — "
+                    f"для этого в канале <#1029842182959546368> пропиши команду `.verify`.\n"
+                    "После этого, тебе откроются все возможности участников сервера.\n\n"
+                    "Появились **вопросы**? Используй кнопку создания **тикета** в канале "
+                    "<#846329342983143434>. Тебе обязательно помогут!"
+                ),
+                color=0x2B2D31
+            )
+            if member.guild.icon:
+                embed.set_thumbnail(url=member.guild.icon.url)
+            embed.set_footer(text="anime nom • Добро пожаловать!")
+
+            await member.send(embed=embed)
+        except:
+            # Если DM закрыты — игнорируем
+            pass
+
     @nextcord.slash_command(name="verify", description="Верифицироваться на сервере")
     @commands.has_role(1019964836639166525)
     async def verify_slash(self, interaction: Interaction):
