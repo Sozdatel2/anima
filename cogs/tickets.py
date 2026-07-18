@@ -67,7 +67,6 @@ class Tickets(commands.Cog):
         async def callback(self, interaction: Interaction):
             target_input = self.target.value.strip()
             target_id = None
-            target_mention = target_input
 
             if target_input.isdigit():
                 target_id = int(target_input)
@@ -147,56 +146,56 @@ class Tickets(commands.Cog):
             self.cog = cog
 
         @ui.button(label="Взять в работу", style=ButtonStyle.primary, emoji="📌")
-        async def take_button(self, button: Interaction, _):
-            if not any(role.id in self.cog.MOD_ROLES_ALLOWED for role in button.user.roles):
-                await button.response.send_message("❌ У вас нет прав!", ephemeral=True)
+        async def take_button(self, interaction: Interaction, _):
+            if not any(role.id in self.cog.MOD_ROLES_ALLOWED for role in interaction.user.roles):
+                await interaction.response.send_message("❌ У вас нет прав!", ephemeral=True)
                 return
 
-            mod_role = button.guild.get_role(self.cog.MOD_ROLE_ID)
+            mod_role = interaction.guild.get_role(self.cog.MOD_ROLE_ID)
             overwrites = self.channel.overwrites
             overwrites[mod_role] = PermissionOverwrite(view_channel=False)
-            overwrites[button.user] = PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+            overwrites[interaction.user] = PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
             await self.channel.edit(overwrites=overwrites)
 
             for item in self.children:
                 if item.label == "Взять в работу":
                     item.disabled = True
-            await button.message.edit(view=self)
+            await interaction.message.edit(view=self)
 
-            embed = button.message.embeds[0]
-            embed.add_field(name="📌 В работе", value=f"Модератор {button.user.mention}", inline=False)
-            await button.message.edit(embed=embed)
+            embed = interaction.message.embeds[0]
+            embed.add_field(name="📌 В работе", value=f"Модератор {interaction.user.mention}", inline=False)
+            await interaction.message.edit(embed=embed)
 
             await self.cog.log_action(
                 title="Тикет взят в работу",
                 fields=[
                     ("ID", f"`#{self.ticket_id}`", True),
-                    ("Модератор", button.user.mention, True),
+                    ("Модератор", interaction.user.mention, True),
                     ("Канал", self.channel.mention, True),
                 ],
                 color=0xFFA500
             )
 
-            await button.response.send_message("📌 Тикет взят в работу!", ephemeral=True)
+            await interaction.response.send_message("📌 Тикет взят в работу!", ephemeral=True)
 
         @ui.button(label="Закрыть", style=ButtonStyle.danger, emoji="🔒")
-        async def close_button(self, button: Interaction, _):
-            if not any(role.id in self.cog.MOD_ROLES_ALLOWED for role in button.user.roles):
-                await button.response.send_message("❌ У вас нет прав!", ephemeral=True)
+        async def close_button(self, interaction: Interaction, _):
+            if not any(role.id in self.cog.MOD_ROLES_ALLOWED for role in interaction.user.roles):
+                await interaction.response.send_message("❌ У вас нет прав!", ephemeral=True)
                 return
 
-            await self.channel.delete(reason=f"Тикет #{self.ticket_id} закрыт модератором {button.user.name}")
+            await self.channel.delete(reason=f"Тикет #{self.ticket_id} закрыт модератором {interaction.user.name}")
 
             await self.cog.log_action(
                 title="Тикет закрыт",
                 fields=[
                     ("ID", f"`#{self.ticket_id}`", True),
-                    ("Модератор", button.user.mention, True),
+                    ("Модератор", interaction.user.mention, True),
                 ],
                 color=0xFF0000
             )
 
-            await button.response.send_message("🔒 Тикет закрыт!", ephemeral=True)
+            await interaction.response.send_message("🔒 Тикет закрыт!", ephemeral=True)
 
     class CreateTicketView(ui.View):
         def __init__(self, cog):
@@ -204,9 +203,9 @@ class Tickets(commands.Cog):
             self.cog = cog
 
         @ui.button(label="Создать тикет", style=ButtonStyle.success, emoji="🎫")
-        async def create_ticket(self, button: Interaction, _):
+        async def create_ticket(self, interaction: Interaction, _):
             modal = self.cog.TicketModal(self.cog)
-            await Interaction.response.send_modal(modal)
+            await interaction.response.send_modal(modal)
 
     @commands.command(name="ticket_panel")
     @commands.has_permissions(administrator=True)
