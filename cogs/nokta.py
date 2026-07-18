@@ -135,7 +135,6 @@ class Nokta(commands.Cog):
             embed = Embed(
                 title="／ Продление нокты．",
                 description=f"Нокта пользователя <@{self.user_id}> **{msg}**",
-                color=0x00FF00,
                 timestamp=datetime.now(timezone.utc)
             )
             embed.add_field(name="Модератор", value=interaction.user.mention, inline=True)
@@ -160,13 +159,13 @@ class Nokta(commands.Cog):
 
         @ui.button(label="Продлить нокту", style=ButtonStyle.primary, emoji="📌")
         async def extend_button(self, button, interaction):
-            has_role = any(role.id in self.cog.MOD_ROLES for role in button.user.roles)
+            has_role = any(role.id in self.cog.MOD_ROLES for role in interaction.user.roles)
             if not has_role:
-                await button.response.send_message("❌ У вас нет прав для продления нокты!", ephemeral=True)
+                await interaction.response.send_message("❌ У вас нет прав для продления нокты!", ephemeral=True)
                 return
 
             modal = self.cog.ExtendModal(self.user_id, self.warn_index, self.cog)
-            await button.response.send_modal(modal)
+            await interaction.response.send_modal(modal)
 
     async def check_noktas(self):
         await self.bot.wait_until_ready()
@@ -218,7 +217,7 @@ class Nokta(commands.Cog):
                             ("Пользователь", member.mention, True),
                             ("Причина", "Достигнут лимит 5 нокт", False)
                         ],
-                        color=0xFF0000
+                        
                     )
                     continue
 
@@ -234,8 +233,7 @@ class Nokta(commands.Cog):
                         fields=[
                             ("Пользователь", member.mention, True),
                             ("Причина", "Достигнут лимит 3 нокт", False)
-                        ],
-                        color=0xFFA500
+                        ]
                     )
                     continue
 
@@ -266,7 +264,6 @@ class Nokta(commands.Cog):
         embed = Embed(
             title="／ Выдача нокты．",
             description=f"Пользователь **{member.name}** получил нокту",
-            color=0xFFA500,
             timestamp=datetime.now(timezone.utc)
         )
         embed.add_field(name="Причина", value=f"**{reason}**", inline=False)
@@ -286,8 +283,7 @@ class Nokta(commands.Cog):
                 ("Модератор", ctx.author.mention, True),
                 ("Причина", reason, False),
                 ("Всего нокт", str(warn_count), True)
-            ],
-            color=0xFFA500
+            ]
         )
 
     @commands.command(name="my_nokta", description="Посмотреть свои активные нокты")
@@ -297,16 +293,14 @@ class Nokta(commands.Cog):
         if not active:
             embed = Embed(
                 title="／ Мои нокты．",
-                description="✅ У вас нет активных нокт",
-                color=0x00FF00
+                description="✅ У вас нет активных нокт"
             )
             await ctx.send(embed=embed)
             return
 
         embed = Embed(
             title="／ Мои нокты．",
-            description=f"У вас **{len(active)}** активных нокт",
-            color=0xFFA500
+            description=f"У вас **{len(active)}** активных нокт"
         )
         for i, w in enumerate(active[:5], 1):
             mod = self.bot.get_user(w["moderator_id"])
@@ -353,7 +347,7 @@ class Nokta(commands.Cog):
             embed = Embed(
                 title="／ Очистка нокт．",
                 description=f"✅ Все нокты пользователя **{member.name}** очищены",
-                color=0x00FF00
+                
             )
             await ctx.send(embed=embed)
 
@@ -363,13 +357,12 @@ class Nokta(commands.Cog):
                     ("Пользователь", member.mention, True),
                     ("Модератор", ctx.author.mention, True)
                 ],
-                color=0x00FF00
+                
             )
         else:
             embed = Embed(
                 title="／ Очистка нокт．",
-                description=f"❌ У пользователя **{member.name}** нет нокт",
-                color=0xFF0000
+                description=f"❌ У пользователя **{member.name}** нет нокт"
             )
             await ctx.send(embed=embed)
 
@@ -400,7 +393,6 @@ class Nokta(commands.Cog):
         embed = Embed(
             title="／ Выдача нокты．",
             description=f"Пользователь **{member.name}** получил нокту",
-            color=0xFFA500,
             timestamp=datetime.now(timezone.utc)
         )
         embed.add_field(name="Причина", value=f"**{reason}**", inline=False)
@@ -420,8 +412,7 @@ class Nokta(commands.Cog):
                 ("Модератор", interaction.user.mention, True),
                 ("Причина", reason, False),
                 ("Всего нокт", str(warn_count), True)
-            ],
-            color=0xFFA500
+            ]
         )
 
     @nextcord.slash_command(name="my_nokta", description="Посмотреть свои активные нокты")
@@ -432,15 +423,14 @@ class Nokta(commands.Cog):
             embed = Embed(
                 title="／ Мои нокты．",
                 description="✅ У вас нет активных нокт",
-                color=0x00FF00
+                
             )
             await interaction.response.send_message(embed=embed)
             return
 
         embed = Embed(
             title="／ Мои нокты．",
-            description=f"У вас **{len(active)}** активных нокт",
-            color=0xFFA500
+            description=f"У вас **{len(active)}** активных нокт"
         )
         for i, w in enumerate(active[:5], 1):
             mod = self.bot.get_user(w["moderator_id"])
@@ -465,8 +455,7 @@ class Nokta(commands.Cog):
 
         embed = Embed(
             title=f"／ Нокты пользователя {member.name}．",
-            description=f"Всего активных нокт： **{len(active)}**",
-            color=0x2B2D31
+            description=f"Всего активных нокт： **{len(active)}**"
         )
 
         if not active:
@@ -494,8 +483,7 @@ class Nokta(commands.Cog):
         if self.clear_warns(member.id):
             embed = Embed(
                 title="／ Очистка нокт．",
-                description=f"✅ Все нокты пользователя **{member.name}** очищены",
-                color=0x00FF00
+                description=f"✅ Все нокты пользователя **{member.name}** очищены"
             )
             await interaction.response.send_message(embed=embed)
 
@@ -504,14 +492,12 @@ class Nokta(commands.Cog):
                 fields=[
                     ("Пользователь", member.mention, True),
                     ("Модератор", interaction.user.mention, True)
-                ],
-                color=0x00FF00
+                ]
             )
         else:
             embed = Embed(
                 title="／ Очистка нокт．",
-                description=f"❌ У пользователя **{member.name}** нет нокт",
-                color=0xFF0000
+                description=f"❌ У пользователя **{member.name}** нет нокт"
             )
             await interaction.response.send_message(embed=embed)
 

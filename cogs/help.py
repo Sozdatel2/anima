@@ -9,12 +9,16 @@ class HelpCommand(commands.Cog):
         self.excluded_commands = ['load', 'unload', 'reload', 'help']
         
         self.category_map = {
-            'Moderation': {'emoji': '', 'name': 'Модерация'},
-            'Verify': {'emoji': '', 'name': 'Верификация'},
-            'Partners': {'emoji': '', 'name': 'Партнёры'},
-            'Basic': {'emoji': '', 'name': 'Основные'},
-            'HideBan': {'emoji': '', 'name': 'Скрытый бан'},
-            'Default': {'emoji': '', 'name': 'Прочее'}
+            'Moderation': {'emoji': '🛡️', 'name': 'Модерация'},
+            'Verify': {'emoji': '✅', 'name': 'Верификация'},
+            'Partnerships': {'emoji': '🤝', 'name': 'Партнёрства'},
+            'Basic': {'emoji': '📋', 'name': 'Основные'},
+            'Stats': {'emoji': '📊', 'name': 'Статистика'},
+            'Nokta': {'emoji': '📌', 'name': 'Нокты'},
+            'HideBanCommand': {'emoji': '👻', 'name': 'Скрытый бан'},
+            'Reports': {'emoji': '📩', 'name': 'Репорты'},
+            'Tickets': {'emoji': '🎫', 'name': 'Тикеты'},
+            'Default': {'emoji': '📂', 'name': 'Прочее'}
         }
 
     @nextcord.slash_command(name="help", description="Показать список доступных команд")
@@ -38,9 +42,9 @@ class HelpCommand(commands.Cog):
         
         for category, commands_list in categorized_commands.items():
             if commands_list:
-                category_info = self.category_map.get(category, {'emoji': '', 'name': 'Прочее'})
+                category_info = self.category_map.get(category, {'emoji': '📂', 'name': 'Прочее'})
                 embed.add_field(
-                    name=f"{category_info['name']}",
+                    name=f"{category_info['emoji']} {category_info['name']}",
                     value="\n".join(commands_list),
                     inline=False
                 )
@@ -131,7 +135,7 @@ class HelpCommand(commands.Cog):
             cog_name = type(cmd.cog).__name__
             if cog_name in self.category_map:
                 return cog_name
-        for category in ['Moderation', 'Verify', 'Partners', 'Basic', 'HideBan']:
+        for category in ['Moderation', 'Verify', 'Partnerships', 'Basic', 'Stats', 'Nokta', 'HideBanCommand', 'Reports', 'Tickets']:
             if category.lower() in cmd.name.lower():
                 return category
         return 'Default'

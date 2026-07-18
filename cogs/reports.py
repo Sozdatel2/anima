@@ -17,15 +17,14 @@ class Reports(commands.Cog):
             846338416303538226    # Овнеры
         ]
 
-    async def log_action(self, title: str, fields: list = None, color: int = 0x2B2D31):
+    async def log_action(self, title: str, fields: list = None):
         """Логирование для админов (в лог-канал)"""
         channel = self.bot.get_channel(self.LOG_CHANNEL_ID)
         if not channel:
             return
         embed = Embed(
             title=f"／ {title}．",
-            timestamp=datetime.now(timezone.utc),
-            color=color
+            timestamp=datetime.now(timezone.utc)
         )
         if fields:
             for name, value, inline in fields:
@@ -44,12 +43,11 @@ class Reports(commands.Cog):
         @ui.button(label="Принять", style=ButtonStyle.success, emoji="✅")
         async def accept_button(self, button, interaction):
             if not any(role.id in self.cog.MOD_ROLES_ALLOWED for role in button.user.roles):
-                await button.response.send_message("❌ У вас нет прав!", ephemeral=True)
+                await interaction.response.send_message("❌ У вас нет прав!", ephemeral=True)
                 return
 
             await button.message.edit(view=None)
             embed = button.message.embeds[0]
-            embed.color = 0x00FF00
             embed.add_field(name="Статус", value=f"✅ **Принят** модератором {button.user.mention}", inline=False)
             await button.message.edit(embed=embed)
 
@@ -57,8 +55,7 @@ class Reports(commands.Cog):
                 reporter = await self.cog.bot.fetch_user(self.reporter_id)
                 embed_user = Embed(
                     title="／ Ваш репорт принят．",
-                    description=f"Ваша жалоба на <@{self.reported_id}> была **принята** модерацией",
-                    color=0x00FF00
+                    description=f"Ваша жалоба на <@{self.reported_id}> была **принята** модерацией"
                 )
                 embed_user.add_field(name="Причина", value=f"**{self.reason}**", inline=False)
                 embed_user.add_field(name="Модератор", value=button.user.mention, inline=True)
@@ -73,21 +70,19 @@ class Reports(commands.Cog):
                     ("Модератор", button.user.mention, True),
                     ("Пользователь", f"<@{self.reported_id}>", True),
                     ("Причина", self.reason, False)
-                ],
-                color=0x00FF00
+                ]
             )
 
-            await button.response.send_message("✅ Репорт принят!", ephemeral=True)
+            await interaction.response.send_message("✅ Репорт принят!", ephemeral=True)
 
         @ui.button(label="Отклонить", style=ButtonStyle.danger, emoji="❌")
         async def reject_button(self, button, interaction):
             if not any(role.id in self.cog.MOD_ROLES_ALLOWED for role in button.user.roles):
-                await button.response.send_message("❌ У вас нет прав!", ephemeral=True)
+                await interaction.response.send_message("❌ У вас нет прав!", ephemeral=True)
                 return
 
             await button.message.edit(view=None)
             embed = button.message.embeds[0]
-            embed.color = 0xFF0000
             embed.add_field(name="Статус", value=f"❌ **Отклонён** модератором {button.user.mention}", inline=False)
             await button.message.edit(embed=embed)
 
@@ -95,8 +90,7 @@ class Reports(commands.Cog):
                 reporter = await self.cog.bot.fetch_user(self.reporter_id)
                 embed_user = Embed(
                     title="／ Ваш репорт отклонён．",
-                    description=f"Ваша жалоба на <@{self.reported_id}> была **отклонена**",
-                    color=0xFF0000
+                    description=f"Ваша жалоба на <@{self.reported_id}> была **отклонена**"
                 )
                 embed_user.add_field(name="Причина", value=f"**{self.reason}**", inline=False)
                 embed_user.add_field(name="Модератор", value=button.user.mention, inline=True)
@@ -109,11 +103,10 @@ class Reports(commands.Cog):
                 fields=[
                     ("Репорт #", f"**{self.report_id}**", True),
                     ("Модератор", button.user.mention, True),
-                ],
-                color=0xFF0000
+                ]
             )
 
-            await button.response.send_message("❌ Репорт отклонён!", ephemeral=True)
+            await interaction.response.send_message("❌ Репорт отклонён!", ephemeral=True)
 
     @commands.command(name="report", description="Пожаловаться на пользователя")
     async def report(self, ctx, member: nextcord.Member, *, reason: str = "Не указана"):
@@ -133,7 +126,6 @@ class Reports(commands.Cog):
         embed = Embed(
             title="／ Новый репорт．",
             description=f"Пользователь **{ctx.author.name}** подал жалобу",
-            color=0xFFA500,
             timestamp=datetime.now(timezone.utc)
         )
         embed.add_field(name="ID репорта", value=f"`#{report_id}`", inline=True)
@@ -147,8 +139,7 @@ class Reports(commands.Cog):
         try:
             embed_user = Embed(
                 title="／ Репорт отправлен．",
-                description=f"Ваша жалоба на **{member.name}** была отправлена",
-                color=0x00FF00
+                description=f"Ваша жалоба на **{member.name}** была отправлена"
             )
             embed_user.add_field(name="Причина", value=f"**{reason}**", inline=False)
             embed_user.add_field(name="ID репорта", value=f"`#{report_id}`", inline=True)
@@ -165,8 +156,7 @@ class Reports(commands.Cog):
                 ("Автор", ctx.author.mention, True),
                 ("Нарушитель", member.mention, True),
                 ("Причина", reason, False)
-            ],
-            color=0xFFA500
+            ]
         )
 
     @nextcord.slash_command(name="report", description="Пожаловаться на пользователя")
@@ -192,7 +182,6 @@ class Reports(commands.Cog):
         embed = Embed(
             title="／ Новый репорт．",
             description=f"Пользователь **{interaction.user.name}** подал жалобу",
-            color=0xFFA500,
             timestamp=datetime.now(timezone.utc)
         )
         embed.add_field(name="ID репорта", value=f"`#{report_id}`", inline=True)
@@ -206,8 +195,7 @@ class Reports(commands.Cog):
         try:
             embed_user = Embed(
                 title="／ Репорт отправлен．",
-                description=f"Ваша жалоба на **{member.name}** была отправлена",
-                color=0x00FF00
+                description=f"Ваша жалоба на **{member.name}** была отправлена"
             )
             embed_user.add_field(name="Причина", value=f"**{reason}**", inline=False)
             embed_user.add_field(name="ID репорта", value=f"`#{report_id}`", inline=True)
@@ -224,8 +212,7 @@ class Reports(commands.Cog):
                 ("Автор", interaction.user.mention, True),
                 ("Нарушитель", member.mention, True),
                 ("Причина", reason, False)
-            ],
-            color=0xFFA500
+            ]
         )
 
 def setup(bot):
