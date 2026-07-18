@@ -206,7 +206,7 @@ class Tickets(commands.Cog):
         @ui.button(label="Создать тикет", style=ButtonStyle.success, emoji="🎫")
         async def create_ticket(self, button: Interaction, _):
             modal = self.cog.TicketModal(self.cog)
-            await button.response.send_modal(modal)
+            await Interaction.response.send_modal(modal)
 
     @commands.command(name="ticket_panel")
     @commands.has_permissions(administrator=True)
