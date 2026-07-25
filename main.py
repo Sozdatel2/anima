@@ -48,6 +48,9 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         command_name = ctx.message.content.split()[0].lstrip(ctx.prefix)
         
+        if command_name in ['', '.', '..', '...', '....', ',', ';', ':', '?', '!', '!!', '???', '...?', '..?']:
+            return
+        
         if command_name == "help" or command_name.startswith("help"):
             return
         
