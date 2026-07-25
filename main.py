@@ -1,12 +1,9 @@
-## Импорты библиотек
 import os
 import nextcord
 import traceback
 import asyncio
 from itertools import cycle
 from difflib import get_close_matches
-
-## Импорты из файлов/библиотек
 from nextcord.ext import commands
 from settings import prefix
 from dotenv import load_dotenv
@@ -26,20 +23,25 @@ async def send_error_to_owner(error: Exception, ctx=None, interaction=None):
         if not user:
             return
 
-        error_text = f"**／ Ошибка．**\n\n```py\n{traceback.format_exc()[:1900]}\n```"
+        full_traceback = traceback.format_exc()
+        if not full_traceback or full_traceback == "NoneType: None\n":
+            full_traceback = f"{type(error).__name__}: {str(error)}"
+
+        error_text = f"**／ Ошибка．**\n\n```py\n{full_traceback[:1900]}\n```"
 
         if ctx:
             error_text += f"\n**Команда:** `{ctx.command.name if ctx.command else 'Неизвестно'}`"
             error_text += f"\n**Автор:** {ctx.author}"
             error_text += f"\n**Канал:** {ctx.channel}"
+            error_text += f"\n**Сообщение:** `{ctx.message.content}`"
         elif interaction:
             error_text += f"\n**Команда:** `/{interaction.application_command.name if interaction.application_command else 'Неизвестно'}`"
             error_text += f"\n**Автор:** {interaction.user}"
             error_text += f"\n**Канал:** {interaction.channel}"
 
         await user.send(error_text)
-    except:
-        pass
+    except Exception as e:
+        print(f"Не удалось отправить ошибку в ЛС: {e}")
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -68,46 +70,6 @@ async def on_command_error(ctx, error):
         await ctx.send(embed=embed)
         return
 
-    if isinstance(error, commands.MissingPermissions):
-        embed = nextcord.Embed(
-            title="／ Ошибка．",
-            description=f"❌ У вас недостаточно прав для использования команды **{ctx.command.name}**"
-        )
-        await ctx.send(embed=embed)
-        return
-
-    if isinstance(error, commands.MissingRole) or isinstance(error, commands.MissingAnyRole):
-        embed = nextcord.Embed(
-            title="／ Ошибка．",
-            description=f"❌ У вас нет необходимой роли для использования команды **{ctx.command.name}**"
-        )
-        await ctx.send(embed=embed)
-        return
-
-    if isinstance(error, commands.BadArgument):
-        embed = nextcord.Embed(
-            title="／ Ошибка．",
-            description=f"❌ Не удалось найти указанного пользователя.\nПроверьте правильность ввода."
-        )
-        await ctx.send(embed=embed)
-        return
-
-    if isinstance(error, commands.MissingRequiredArgument):
-        embed = nextcord.Embed(
-            title="／ Ошибка．",
-            description=f"❌ Вы не указали все необходимые аргументы.\nИспользуйте: `{ctx.prefix}{ctx.command.name} {ctx.command.signature}`"
-        )
-        await ctx.send(embed=embed)
-        return
-
-    if isinstance(error, commands.DisabledCommand):
-        embed = nextcord.Embed(
-            title="／ Ошибка．",
-            description="❌ Эта команда временно отключена"
-        )
-        await ctx.send(embed=embed)
-        return
-
     await send_error_to_owner(error, ctx=ctx)
 
     embed = nextcord.Embed(
@@ -116,33 +78,8 @@ async def on_command_error(ctx, error):
     )
     await ctx.send(embed=embed)
 
-    print(f"❌ Ошибка в команде {ctx.command}: {error}")
-    traceback.print_exc()
-
 @bot.event
 async def on_application_command_error(interaction: nextcord.Interaction, error: Exception):
-    if isinstance(error, commands.MissingPermissions):
-        embed = nextcord.Embed(
-            title="／ Ошибка．",
-            description=f"❌ У вас недостаточно прав для использования команды **{interaction.application_command.name}**"
-        )
-        if not interaction.response.is_done():
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-        else:
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        return
-
-    if isinstance(error, commands.MissingRole) or isinstance(error, commands.MissingAnyRole):
-        embed = nextcord.Embed(
-            title="／ Ошибка．",
-            description=f"❌ У вас нет необходимой роли для использования команды **{interaction.application_command.name}**"
-        )
-        if not interaction.response.is_done():
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-        else:
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        return
-
     await send_error_to_owner(error, interaction=interaction)
 
     embed = nextcord.Embed(
@@ -154,9 +91,6 @@ async def on_application_command_error(interaction: nextcord.Interaction, error:
         await interaction.response.send_message(embed=embed, ephemeral=True)
     else:
         await interaction.followup.send(embed=embed, ephemeral=True)
-
-    print(f"❌ Ошибка в слеш-команде {interaction.application_command.name if interaction.application_command else 'Неизвестно'}: {error}")
-    traceback.print_exc()
 
 async def update_member_count():
     await bot.wait_until_ready()
