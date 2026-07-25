@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 class Tickets(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.TICKET_CHANNEL_ID = 846329342983143434
-        self.TICKET_CATEGORY_ID = 1044213985257459732
+        self.TICKET_CHANNEL_ID = 846329342983143434 
+        self.TICKET_CATEGORY_ID = 1044213985257459732 
         self.MOD_ROLE_ID = 1019691991707172874
         self.MOD_ROLES_ALLOWED = [
             1019691991707172874,
@@ -329,10 +329,68 @@ class Tickets(commands.Cog):
                 await interaction.response.send_message("❌ У вас нет прав!", ephemeral=True)
                 return
 
+            author_member = interaction.guild.get_member(self.author_id)
+            if author_member:
+                overwrites = dict(self.channel.overwrites)
+                overwrites[author_member] = PermissionOverwrite(
+                    view_channel=True,
+                    send_messages=False,
+                    read_message_history=True
+                )
+                try:
+                    await self.channel.edit(overwrites=overwrites)
+                except:
+                    pass
+
+            for item in self.children:
+                item.disabled = True
+            await interaction.message.edit(view=self)
+
+            msg_id = str(interaction.message.id)
+            if msg_id in self.cog.view_data:
+                self.cog.view_data[msg_id]["closed"] = True
+                self.cog.save_view_data()
+
+            close_embed = Embed(
+                title="／ Тикет закрыт．",
+                description=f"Тикет #{self.ticket_id} закрыт модератором {interaction.user.mention}\nЗаявитель больше не может писать в канал.",
+                timestamp=datetime.now(timezone.utc)
+            )
+            close_view = self.cog.ClosedTicketView(self.channel, self.ticket_id, self.author_id, self.cog)
+            await interaction.channel.send(embed=close_embed, view=close_view)
+
+            await self.cog.log_action(
+                title="Тикет закрыт",
+                fields=[
+                    ("ID", f"`#{self.ticket_id}`", True),
+                    ("Модератор", interaction.user.mention, True),
+                ],
+                color=0xFF0000
+            )
+
+            await interaction.response.send_message("🔒 Тикет закрыт! Заявитель больше не может писать.", ephemeral=True)
+
+    class ClosedTicketView(ui.View):
+        def __init__(self, channel, ticket_id: int, author_id: int, cog):
+            super().__init__(timeout=None)
+            self.channel = channel
+            self.ticket_id = ticket_id
+            self.author_id = author_id
+            self.cog = cog
+            self.log_sent = False
+
+        @ui.button(label="Отправить лог", style=ButtonStyle.secondary, emoji="📄")
+        async def send_log_button(self, button, interaction):
+            if not any(role.id in self.cog.MOD_ROLES_ALLOWED for role in interaction.user.roles):
+                await interaction.response.send_message("❌ У вас нет прав!", ephemeral=True)
+                return
+
+            if self.log_sent:
+                await interaction.response.send_message("❌ Лог уже был отправлен.", ephemeral=True)
+                return
+
             log_lines = [
                 f"── Лог тикета #{self.ticket_id} ──",
-                f"Создан: {interaction.message.created_at.strftime('%Y-%m-%d %H:%M:%S')}",
-                f"Закрыт: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}",
                 f"ID тикета: #{self.ticket_id}",
                 f"Модератор: {escape_mentions(interaction.user.display_name)} ({interaction.user.id})",
                 "",
@@ -349,8 +407,8 @@ class Tickets(commands.Cog):
                     for embed in msg.embeds:
                         if embed.title:
                             log_lines.append(f"[{time}] {author}: [Embed] {embed.title}")
-            except (nextcord.Forbidden, nextcord.HTTPException) as e:
-                log_lines.append(f"⚠️ Не удалось прочитать историю канала: {e}")
+            except:
+                log_lines.append("⚠️ Не удалось прочитать историю канала.")
 
             log_text = "\n".join(log_lines) + "\n\n── Конец лога ──"
 
@@ -363,55 +421,55 @@ class Tickets(commands.Cog):
                 file = nextcord.File(io.BytesIO(log_data), filename=f"ticket_{self.ticket_id}.txt")
                 embed_log = Embed(
                     title="／ Лог тикета．",
-                    description=f"Тикет #{self.ticket_id} закрыт модератором {interaction.user.mention}",
+                    description=f"Тикет #{self.ticket_id}",
                     timestamp=datetime.now(timezone.utc)
                 )
                 try:
                     await log_channel.send(embed=embed_log, file=file)
-                except (nextcord.Forbidden, nextcord.HTTPException) as e:
-                    logger.warning(f"Failed to send log: {e}")
+                    self.log_sent = True
+                    button.disabled = True
+                    await interaction.message.edit(view=self)
+                    await interaction.response.send_message("✅ Лог отправлен!", ephemeral=True)
+                except Exception as e:
+                    await interaction.response.send_message(f"❌ Ошибка при отправке лога: {e}", ephemeral=True)
+
+        @ui.button(label="Открыть заново", style=ButtonStyle.success, emoji="🔓")
+        async def reopen_button(self, button, interaction):
+            if not any(role.id in self.cog.MOD_ROLES_ALLOWED for role in interaction.user.roles):
+                await interaction.response.send_message("❌ У вас нет прав!", ephemeral=True)
+                return
+
+            author_member = interaction.guild.get_member(self.author_id)
+            if not author_member:
+                await interaction.response.send_message("❌ Заявитель не найден на сервере.", ephemeral=True)
+                return
+
+            overwrites = dict(self.channel.overwrites)
+            overwrites[author_member] = PermissionOverwrite(
+                view_channel=True,
+                send_messages=True,
+                read_message_history=True
+            )
+            await self.channel.edit(overwrites=overwrites)
 
             for item in self.children:
                 item.disabled = True
+            await interaction.message.edit(view=self)
 
-            try:
-                await interaction.message.edit(view=self)
-            except (nextcord.Forbidden, nextcord.HTTPException) as e:
-                logger.warning(f"Failed to edit message: {e}")
+            for msg_id, data in self.cog.view_data.items():
+                if data.get("ticket_id") == self.ticket_id:
+                    self.cog.view_data[msg_id]["closed"] = False
+                    self.cog.save_view_data()
+                    break
 
-            msg_id = str(interaction.message.id)
-            if msg_id in self.cog.view_data:
-                self.cog.view_data[msg_id]["closed"] = True
-                self.cog.save_view_data()
-
-            close_embed = Embed(
-                title="／ Тикет закрыт．",
-                description=f"Тикет #{self.ticket_id} закрыт модератором {interaction.user.mention}\nНажмите кнопку ниже, чтобы удалить канал.",
+            embed = Embed(
+                title="／ Тикет открыт заново．",
+                description=f"Тикет #{self.ticket_id} был открыт заново модератором {interaction.user.mention}",
                 timestamp=datetime.now(timezone.utc)
             )
-            close_view = self.cog.DeleteTicketView(self.channel, self.ticket_id, self.cog)
-            try:
-                await interaction.channel.send(embed=close_embed, view=close_view)
-            except (nextcord.Forbidden, nextcord.HTTPException) as e:
-                logger.warning(f"Failed to send close message: {e}")
+            await self.channel.send(embed=embed)
 
-            await self.cog.log_action(
-                title="Тикет закрыт",
-                fields=[
-                    ("ID", f"`#{self.ticket_id}`", True),
-                    ("Модератор", interaction.user.mention, True),
-                ],
-                color=0xFF0000
-            )
-
-            await interaction.response.send_message("🔒 Тикет закрыт! Лог сохранён.", ephemeral=True)
-
-    class DeleteTicketView(ui.View):
-        def __init__(self, channel, ticket_id: int, cog):
-            super().__init__(timeout=None)
-            self.channel = channel
-            self.ticket_id = ticket_id
-            self.cog = cog
+            await interaction.response.send_message("🔓 Тикет открыт заново!", ephemeral=True)
 
         @ui.button(label="Удалить обращение", style=ButtonStyle.danger, emoji="🗑️")
         async def delete_button(self, button, interaction):
@@ -483,4 +541,4 @@ class Tickets(commands.Cog):
         await ctx.message.delete()
 
 def setup(bot):
-    bot.add_cog(Tickets(bot))
+    bot.add_cog(Tickets(bot))   
