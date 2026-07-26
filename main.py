@@ -1,7 +1,9 @@
+import datetime
 import os
 import nextcord
 import traceback
 import asyncio
+
 from itertools import cycle
 from difflib import get_close_matches
 from nextcord.ext import commands
@@ -16,6 +18,39 @@ OWNER_ID = 942776739870933003
 
 bot = commands.Bot(command_prefix=prefix, owner_id=OWNER_ID, intents=nextcord.Intents.all())
 bot.remove_command("help")
+
+async def send_to_owner(text: str):
+    try:
+        user = await bot.fetch_user(OWNER_ID)
+        if user:
+            await user.send(text)
+    except:
+        pass
+
+def load_cogs():
+    loaded = []
+    failed = []
+
+    for fn in os.listdir("./cogs"):
+        if fn.endswith(".py"):
+            try:
+                bot.load_extension(f"cogs.{fn[:-3]}")
+                loaded.append(f"✅ {fn}")
+                print(f"✅ Загружен ког: {fn}")
+            except Exception as e:
+                error_text = f"❌ Ошибка загрузки {fn}\n```py\n{traceback.format_exc()[:1500]}\n```"
+                failed.append(error_text)
+                print(f"❌ Ошибка загрузки {fn}: {e}")
+
+    if loaded or failed:
+        msg = "**／ Загрузка когов．**\n\n"
+        if loaded:
+            msg += "**Успешно загружены:**\n" + "\n".join(loaded) + "\n\n"
+        if failed:
+            msg += "**⚠️ Ошибки загрузки:**\n" + "\n".join(failed)
+        bot.loop.create_task(send_to_owner(msg))
+
+load_cogs()
 
 async def send_error_to_owner(error: Exception, ctx=None, interaction=None):
     try:
@@ -47,9 +82,6 @@ async def send_error_to_owner(error: Exception, ctx=None, interaction=None):
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         command_name = ctx.message.content.split()[0].lstrip(ctx.prefix)
-        
-        if command_name in ['', '.', '..', '...', '....', ',', ';', ':', '?', '!', '!!', '???', '...?', '..?']:
-            return
         
         if command_name == "help" or command_name.startswith("help"):
             return
@@ -135,30 +167,54 @@ async def on_ready():
 
     print('Bot is ready to work')
 
-for fn in os.listdir("./cogs"):
-    if fn.endswith(".py"):
-        try:
-            bot.load_extension(f"cogs.{fn[:-3]}")
-            print(f"✅ Загружен ког: {fn}")
-        except Exception as e:
-            print(f"❌ Ошибка загрузки {fn}: {e}")
-
 @bot.command()
 @commands.is_owner()
 async def load(ctx, extension):
-    bot.load_extension(f"cogs.{extension}")
-    await ctx.send('Loaded extention!')
+    try:
+        bot.load_extension(f"cogs.{extension}")
+        await ctx.send(f'✅ Ког {extension} загружен')
+    except Exception as e:
+        await ctx.send(f'❌ Ошибка: {e}')
 
 @bot.command()
 @commands.is_owner()
 async def unload(ctx, extension):
-    bot.unload_extension(f"cogs.{extension}")
-    await ctx.send('Unloaded extention!')
+    try:
+        bot.unload_extension(f"cogs.{extension}")
+        await ctx.send(f'✅ Ког {extension} выгружен')
+    except Exception as e:
+        await ctx.send(f'❌ Ошибка: {e}')
 
 @bot.command()
 @commands.is_owner()
 async def reload(ctx, extension):
-    bot.reload_extension(f"cogs.{extension}")
-    await ctx.send('Reloaded extention!')
+    try:
+        bot.reload_extension(f"cogs.{extension}")
+        await ctx.send(f'✅ Ког {extension} перезагружен')
+    except Exception as e:
+        await ctx.send(f'❌ Ошибка: {e}')
+
+@bot.command(name="list_cogs")
+@commands.is_owner()
+async def list_cogs(ctx):
+    """Показывает список загруженных и доступных когов"""
+    loaded = list(bot.extensions.keys())
+    available = [f[:-3] for f in os.listdir("./cogs") if f.endswith(".py")]
+
+    embed = nextcord.Embed(
+        title="／ Список когов．",
+        timestamp=datetime.now(datetime.timezone.utc)
+    )
+    embed.add_field(
+        name="✅ Загружены",
+        value="\n".join([f"`{cog}`" for cog in loaded]) if loaded else "Нет",
+        inline=True
+    )
+    embed.add_field(
+        name="📁 Доступны",
+        value="\n".join([f"`{cog}`" for cog in available]) if available else "Нет",
+        inline=True
+    )
+    await ctx.send(embed=embed)
 
 bot.run(token)
