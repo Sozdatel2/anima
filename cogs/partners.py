@@ -145,10 +145,6 @@ class Partnerships(commands.Cog):
 
         self.save_data()
 
-    # ==========================================
-    # 🔹 ПРЕФИКСНЫЕ КОМАНДЫ (через .)
-    # ==========================================
-
     @commands.command(
         name="pm_info",
         aliases=["pminfo", "pmstat", "pm"],
@@ -156,7 +152,6 @@ class Partnerships(commands.Cog):
         brief="Статистика ПМа"
     )
     async def pm_info(self, ctx, member: nextcord.Member = None):
-        """／ Статистика ПМа．"""
         if member is None:
             member = ctx.author
 
@@ -218,7 +213,6 @@ class Partnerships(commands.Cog):
         brief="Топ ПМов"
     )
     async def pm_top(self, ctx):
-        """／ Топ ПМов．"""
         stats = await self.get_all_stats("all")
 
         if not stats:
@@ -264,7 +258,6 @@ class Partnerships(commands.Cog):
         brief="Топ серверов"
     )
     async def pm_servers(self, ctx):
-        """／ Топ серверов．"""
         if not self.data["servers"]:
             await ctx.send("／ Статистика．\n\nНет данных о серверах")
             return
@@ -311,7 +304,6 @@ class Partnerships(commands.Cog):
     )
     @commands.has_permissions(administrator=True)
     async def pm_reset(self, ctx):
-        """／ Сброс статистики партнёрств．"""
 
         await ctx.send(
             "／ Подтверждение．\n\n"
@@ -342,10 +334,6 @@ class Partnerships(commands.Cog):
             "／ Готово．\n\n"
             "Статистика партнёрств **полностью сброшена**."
         )
-
-    # ==========================================
-    # 🔹 СЛЕШ-КОМАНДЫ (/)
-    # ==========================================
 
     @nextcord.slash_command(name="pm_info", description="Показывает статистику ПМа")
     @commands.has_permissions(administrator=True)
