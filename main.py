@@ -202,8 +202,7 @@ async def list_cogs(ctx):
     available = [f[:-3] for f in os.listdir("./cogs") if f.endswith(".py")]
 
     embed = nextcord.Embed(
-        title="／ Список когов．",
-        timestamp=datetime.now(datetime.timezone.utc)
+        title="／ Список когов．"
     )
     embed.add_field(
         name="✅ Загружены",
