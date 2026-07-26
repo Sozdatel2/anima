@@ -21,9 +21,10 @@ class Nokta(commands.Cog):
         self._lock = asyncio.Lock()
         self.DATA_PATH.parent.mkdir(exist_ok=True)
         self.data = self.load_data()
+        self.task = None
         self.task = self.bot.loop.create_task(self.check_noktas())
 
-        self.bot.add_view(self.ExtendButton(0, 0, self))  # persistent view
+        self.bot.add_view(self.ExtendButton(0, 0, self))
 
     def cog_unload(self):
         if self.task:

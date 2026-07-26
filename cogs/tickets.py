@@ -32,6 +32,7 @@ class Tickets(commands.Cog):
         self.view_data = self.load_view_data()
 
         self.bot.add_view(self.CreateTicketView(self))
+        self.task = None
         self.bot.loop.create_task(self.cleanup_and_restore())
 
     def load_view_data(self):
