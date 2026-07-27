@@ -585,7 +585,6 @@ class Curators(commands.Cog):
             await interaction.response.send_modal(modal)
 
     @commands.command(name="set-vocation", aliases=["staff", "куратор"])
-    @commands.has_permissions(administrator=True)
     async def set_vocation(self, ctx, member: nextcord.Member):
         if ctx.channel.id != self.CURATOR_CHANNEL_ID:
             await ctx.send("❌ Команда доступна только в канале кураторов.", delete_after=10)
@@ -593,11 +592,15 @@ class Curators(commands.Cog):
 
         author_roles = [r.id for r in ctx.author.roles]
         can_manage = False
-        if 846338416303538226 in author_roles:
+
+        # Проверка: овнер, хеды, куратор
+        if 846338416303538226 in author_roles:           # Овнер
             can_manage = True
-        if self.MOD_ROLES["Head of Mod"] in author_roles:
+        elif self.MOD_ROLES["Head of Mod"] in author_roles:  # Хед модерации
             can_manage = True
-        if self.PR_ROLES["Head of PR"] in author_roles:
+        elif self.PR_ROLES["Head of PR"] in author_roles:    # Хед PR
+            can_manage = True
+        elif self.CURATOR_ROLE in author_roles:              # Куратор (994284414584504372)
             can_manage = True
 
         if not can_manage:
@@ -616,8 +619,23 @@ class Curators(commands.Cog):
         await ctx.send(embed=embed, view=view)
 
     @commands.command(name="vocation")
-    @commands.has_permissions(administrator=True)
     async def vocation(self, ctx, member: nextcord.Member):
+        author_roles = [r.id for r in ctx.author.roles]
+
+        can_view = False
+        if 846338416303538226 in author_roles:           # Овнер
+            can_view = True
+        elif self.MOD_ROLES["Head of Mod"] in author_roles:  # Хед модерации
+            can_view = True
+        elif self.PR_ROLES["Head of PR"] in author_roles:    # Хед PR
+            can_view = True
+        elif self.CURATOR_ROLE in author_roles:              # Куратор
+            can_view = True
+
+        if not can_view:
+            await ctx.send("❌ У вас нет прав на просмотр истории сотрудников.", delete_after=10)
+            return
+
         data = self.get_user_history(str(member.id))
         history = data.get("history", [])
 
